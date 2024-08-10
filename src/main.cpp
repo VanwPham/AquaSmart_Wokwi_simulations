@@ -44,7 +44,7 @@ PubSubClient client(espClient);
 void connectToWiFi();
 void connectToMQTT();
 void readInfo();
-void sendToMQTT();
+void publish();
 
 void connectToWiFi() {
   Serial.println();
@@ -103,7 +103,7 @@ void displayInfo(){
 
 }
 
-void sendToMQTT() {
+void publish() {
   if (!client.connected()) {
     connectToMQTT();
   }
@@ -156,7 +156,7 @@ void loop()
   { 
     last_sent = current;
     displayInfo();
-    sendToMQTT();
+    publish();
   }
 }
 
