@@ -1,8 +1,11 @@
 #include <LiquidCrystal_I2C.h>
-#include <OneWire.h>
 #include <DallasTemperature.h>
 #include <PubSubClient.h>
+#include <OneWire.h>
 #include <WiFi.h>
+#include <cstring>
+
+using namespace std;
 
 #define led_pin 13
 #define tmp_pin 4
@@ -15,36 +18,36 @@ const char* password = "";
 
 const char* mqttServer = "test.mosquitto.org";
 const int mqttPort = 1883;
-
-const char* mqttID = "ESP32Client_test2303";
-
-const char* Topic = "aqua/sensor";
+const char* mqttID = "vankt23";
+const char* publishTopic = "aqua/sensor";
 
 const int oneWireBus = 4;
 
 OneWire oneWire(oneWireBus);
-
 DallasTemperature sensors(&oneWire);
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
+// default settings
 float pH_upper_Limit = 8.5;
 float pH_lower_Limit = 7;
 float tmp_upper_Limit = 32;
 float tmp_lower_Limit = 25;
-
-float pH;
-float tmp;
 
 bool warning = false;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+float pH;
+float tmp;
+
 void connectToWiFi();
 void connectToMQTT();
 void readInfo();
 void publish();
+void getRange(char* msg, char* topic);
+void callback(char* topic, byte* payload, unsigned int length) ;
 
 void connectToWiFi() {
   Serial.println();
@@ -68,6 +71,9 @@ void connectToMQTT() {
     Serial.print("Connecting to MQTT...");
     if (client.connect(mqttID)) {
       Serial.println("connected");
+      client.subscribe("aqua/sensor/tmpLimit");
+      client.subscribe("aqua/sensor/pHLimit");
+
     } else {
       Serial.print("failed with state ");
       Serial.println(client.state());
@@ -84,12 +90,12 @@ void readInfo(){
 
   warning = (pH < pH_lower_Limit || pH > pH_upper_Limit
              || tmp < tmp_lower_Limit || tmp > tmp_upper_Limit);
-  if (warning) {
-    digitalWrite(led_pin, HIGH);
-  }
-  else {
-    digitalWrite(led_pin, LOW);
-  }
+}
+
+void ledDisplay()
+{
+  if (warning) digitalWrite(led_pin, HIGH);
+  else digitalWrite(led_pin, LOW);
 }
 
 void displayInfo(){
@@ -100,7 +106,7 @@ void displayInfo(){
   lcd.print(pH);
   lcd.setCursor(8, 1);
   lcd.print(tmp);
-
+  ledDisplay();
 }
 
 void publish() {
@@ -116,9 +122,8 @@ void publish() {
   char combinedString[16];
   snprintf(combinedString, sizeof(combinedString), "%s,%s", temperatureString, pHString);
 
-  client.publish(Topic, combinedString, 0);
+  client.publish(publishTopic, combinedString, 0);
 
-  Serial.println(combinedString);
 }
 
 void setup(){
@@ -140,8 +145,8 @@ void setup(){
   connectToWiFi();
   client.setServer(mqttServer, mqttPort);
   connectToMQTT();
+  client.setCallback(callback);
 }
-
 
 void loop()
 {
@@ -162,14 +167,35 @@ void loop()
 
 void callback(char* topic, byte* payload, unsigned int length) 
 { 
-    char msg = 0;
-    Serial.print("Message arrived [");
-    Serial.print(topic);
-    Serial.print("]: ");
+  char* msg = new char[length+1];
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("]: ");
 
-    for(int i = 0 ; i < length; i++){ msg = (char)payload[i]; }
-    Serial.println(msg);
-    
-    // if('1' == msg){ digitalWrite(LedPin, HIGH); }
-    // else if('2' == msg){ digitalWrite(LedPin, LOW); }
+  for(int i = 0 ; i < length; i++){ msg[i] = (char)payload[i];}
+  msg[length] = '\0';
+
+  Serial.println(msg);
+  
+  if (strcmp(topic, "servo") == 0) {}
+  else getRange(msg, topic);
+
+  delete [] msg;
+}
+
+void getRange(char* msg, char* topic) {
+  char* token = strtok(msg, ",");
+  
+  if (strcmp(topic, "aqua/sensor/pHLimit") == 0) 
+  {
+    pH_upper_Limit = stof(token);
+    token = strtok(NULL, ",");
+    pH_lower_Limit = stof(token);
+  }
+  else if (strcmp(topic, "aqua/sensor/tmpLimit") == 0)
+  {
+    tmp_upper_Limit = stof(token);
+    token = strtok(NULL, ",");
+    tmp_lower_Limit = stof(token);
+  }
 }
