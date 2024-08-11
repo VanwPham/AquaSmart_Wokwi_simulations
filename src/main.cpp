@@ -49,7 +49,7 @@ void publish();
 void getRange(char* msg, char* topic);
 void callback(char* topic, byte* payload, unsigned int length) ;
 
-void connectToWiFi() {
+void connectToWiFi(){
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
@@ -66,14 +66,14 @@ void connectToWiFi() {
   Serial.println(WiFi.localIP());
 }
 
-void connectToMQTT() {
+void connectToMQTT(){
   while (!client.connected()) {
     Serial.print("Connecting to MQTT...");
     if (client.connect(mqttID)) {
       Serial.println("connected");
       client.subscribe("aqua/sensor/tmpLimit");
       client.subscribe("aqua/sensor/pHLimit");
-
+      client.subscribe("aqua/servo");
     } else {
       Serial.print("failed with state ");
       Serial.println(client.state());
@@ -123,7 +123,6 @@ void publish() {
   snprintf(combinedString, sizeof(combinedString), "%s,%s", temperatureString, pHString);
 
   client.publish(publishTopic, combinedString, 0);
-
 }
 
 void setup(){
@@ -172,14 +171,14 @@ void callback(char* topic, byte* payload, unsigned int length)
   Serial.print(topic);
   Serial.print("]: ");
 
-  for(int i = 0 ; i < length; i++){ msg[i] = (char)payload[i];}
+  for(int i = 0 ; i < length; i++) {msg[i] = (char)payload[i];}
   msg[length] = '\0';
-
   Serial.println(msg);
   
-  if (strcmp(topic, "servo") == 0) {}
-  else getRange(msg, topic);
+  if (strcmp(topic, "aqua/servo") == 0) {
 
+  }
+  else getRange(msg, topic);
   delete [] msg;
 }
 
