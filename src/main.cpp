@@ -23,8 +23,11 @@ const char* password = "";
 const char* mqttServer = "test.mosquitto.org";
 const int mqttPort = 1883;
 const char* mqttID = "vankt23";
-const char* publishTopic = "aqua/sensor";
+const char* publishSensorTopic = "aqua/sensor's";
 const char* feedTopic  = "aqua/Servo";
+
+// để setting gửi feeding
+const char* publishFeedTopic  = "aqua/Servo/done";
 
 // Thingspeak config
 const unsigned long myChannelID = 2624543;
@@ -60,6 +63,7 @@ void connectToMQTT();
 void readInfo();
 void publish();
 void feedFish();
+void publishLimits();
 void getRange(char* msg, char* topic);
 void callback(char* topic, byte* payload, unsigned int length) ;
 
@@ -73,7 +77,6 @@ void connectToWiFi(){
     delay(100);
     Serial.print(".");
   }
-
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
@@ -136,23 +139,24 @@ void publish() {
   char combinedString[16];
   snprintf(combinedString, sizeof(combinedString), "%s,%s", temperatureString, pHString);
 
-  client.publish(publishTopic, combinedString, 0);
+  client.publish(publishSensorTopic, combinedString, 0);
 }
 
+
 void feedFish() {
-  static int last_call ;
+  static int last_call =  0;
   static bool opening = false;
   int current = millis();
+  if (current - last_call < 1000) return;
+  last_call = current;
   if (!opening)
   {
-    last_call = current;
     fishFeederServo.write(90);
     opening = true;
   } // Rotate clockwise
-  if (current - last_call >= 700 && opening)
+  else 
   {
-
-    fishFeederServo.write(0);
+    fishFeederServo.write(90);
     opening = false;
     feedTimes--;
   } // Stop rotating
@@ -216,7 +220,6 @@ void loop()
   }
 }
 
-
 void callback(char* topic, byte* payload, unsigned int length) 
 { 
   char* msg = new char[length+1];
@@ -229,7 +232,7 @@ void callback(char* topic, byte* payload, unsigned int length)
   Serial.println(msg);
   
   if (strcmp(topic, "aqua/Servo") == 0) {
-        feedTimes = int(msg[0] - '0');
+        feedTimes += int(msg[0] - '0');
         Serial.println(topic);
   }
   else getRange(msg, topic);
