@@ -4,14 +4,18 @@
 #include <OneWire.h>
 #include <WiFi.h>
 #include <cstring>
+#include <ThingSpeak.h>
+#include <ESP32Servo.h>
 
 using namespace std;
 
 #define led_pin 13
 #define tmp_pin 4
 #define pH_pin 32
+#define servo_pin 16
 
 #define pubish_cycle 2000 //ms
+#define thing_speak 15000 //ms 
 
 const char* ssid = "Wokwi-GUEST";
 const char* password = "";
@@ -20,6 +24,12 @@ const char* mqttServer = "test.mosquitto.org";
 const int mqttPort = 1883;
 const char* mqttID = "vankt23";
 const char* publishTopic = "aqua/sensor";
+const char* feedTopic  = "aqua/Servo";
+
+// Thingspeak config
+const unsigned long myChannelID = 2624543;
+const char* myWriteAPIKey = "HSEZ9JK5G263RF5U";
+const char* myReadAPIKey = "YA3LFQ0FBOO1RHIW";
 
 const int oneWireBus = 4;
 
@@ -39,6 +49,9 @@ bool warning = false;
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+Servo fishFeederServo;
+int feedTimes = 0;
+
 float pH;
 float tmp;
 
@@ -46,6 +59,7 @@ void connectToWiFi();
 void connectToMQTT();
 void readInfo();
 void publish();
+void feedFish();
 void getRange(char* msg, char* topic);
 void callback(char* topic, byte* payload, unsigned int length) ;
 
@@ -56,7 +70,7 @@ void connectToWiFi(){
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    delay(100);
     Serial.print(".");
   }
 
@@ -73,11 +87,11 @@ void connectToMQTT(){
       Serial.println("connected");
       client.subscribe("aqua/sensor/tmpLimit");
       client.subscribe("aqua/sensor/pHLimit");
-      client.subscribe("aqua/servo");
+      client.subscribe("aqua/Servo");
     } else {
       Serial.print("failed with state ");
       Serial.println(client.state());
-      delay(1000);
+      delay(100);
     }
   }
 }
@@ -125,6 +139,25 @@ void publish() {
   client.publish(publishTopic, combinedString, 0);
 }
 
+void feedFish() {
+  static int last_call ;
+  static bool opening = false;
+  int current = millis();
+  if (!opening)
+  {
+    last_call = current;
+    fishFeederServo.write(90);
+    opening = true;
+  } // Rotate clockwise
+  if (current - last_call >= 700 && opening)
+  {
+
+    fishFeederServo.write(0);
+    opening = false;
+    feedTimes--;
+  } // Stop rotating
+}
+
 void setup(){
   Serial.begin(115200);
 
@@ -138,8 +171,10 @@ void setup(){
   pinMode(pH_pin, INPUT);
   pinMode(tmp_pin, INPUT);
   pinMode(led_pin, OUTPUT);
+  fishFeederServo.attach(servo_pin);
 
   sensors.begin();
+  ThingSpeak.begin(espClient);
 
   connectToWiFi();
   client.setServer(mqttServer, mqttPort);
@@ -154,15 +189,33 @@ void loop()
   }
   client.loop();
 
-  static int last_sent = millis();
+  if (feedTimes > 0)
+    feedFish();
+
+  static int last_sent = 0;
   int current = millis();
-  if (current - last_sent > pubish_cycle)
+  if (current - last_sent >= pubish_cycle)
   { 
     last_sent = current;
     displayInfo();
     publish();
   }
+  static int thingSpeak_last_sent = 0;
+  if (current - thingSpeak_last_sent >= thing_speak)
+  {
+    thingSpeak_last_sent = current;
+    ThingSpeak.setField(1,tmp);
+    ThingSpeak.setField(2,pH);
+    int msg = ThingSpeak.writeFields(myChannelID, myWriteAPIKey);
+    if (msg == 200){
+      Serial.println("Successful");
+    }
+    else {
+      Serial.println("Error");
+    }
+  }
 }
+
 
 void callback(char* topic, byte* payload, unsigned int length) 
 { 
@@ -175,8 +228,9 @@ void callback(char* topic, byte* payload, unsigned int length)
   msg[length] = '\0';
   Serial.println(msg);
   
-  if (strcmp(topic, "aqua/servo") == 0) {
-
+  if (strcmp(topic, "aqua/Servo") == 0) {
+        feedTimes = int(msg[0] - '0');
+        Serial.println(topic);
   }
   else getRange(msg, topic);
   delete [] msg;

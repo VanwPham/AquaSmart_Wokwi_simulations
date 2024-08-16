@@ -10,6 +10,8 @@
             "includePath": [
                 "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/include",
                 "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/src",
+                "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/.pio/libdeps/esp32/ESP32Servo/src",
+                "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/.pio/libdeps/esp32/ThingSpeak/src",
                 "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/.pio/libdeps/esp32/ArduinoJson/src",
                 "C:/Users/ACER/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                 "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/.pio/libdeps/esp32/Adafruit Unified Sensor",
@@ -252,6 +254,8 @@
                 "path": [
                     "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/include",
                     "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/src",
+                    "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/.pio/libdeps/esp32/ESP32Servo/src",
+                    "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/.pio/libdeps/esp32/ThingSpeak/src",
                     "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/.pio/libdeps/esp32/ArduinoJson/src",
                     "C:/Users/ACER/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                     "d:/College/Clc01/Nam 2/Ky 3/Ly/Project/AquaSmart/.pio/libdeps/esp32/Adafruit Unified Sensor",
