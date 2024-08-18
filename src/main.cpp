@@ -171,11 +171,13 @@ void feedFish() {
   last_call = current;
   if (!opening)
   {
+    // fishFeederServo.writeMicroseconds(1000); 
     fishFeederServo.write(0);
     opening = true;
   } // Rotate clockwise
   else 
   {
+    // fishFeederServo.writeMicroseconds(1500);
     fishFeederServo.write(90);
     opening = false;
     feedTimes--;
@@ -231,6 +233,15 @@ void loop()
   if (current - thingSpeak_last_sent >= thing_speak)
   {
     thingSpeak_last_sent = current;
+    ThingSpeak.setField(1,tmp);
+    ThingSpeak.setField(2,pH);
+    int msg = ThingSpeak.writeFields(myChannelID, myWriteAPIKey);
+    if (msg == 200){
+      Serial.println("Successful");
+    }
+    else {
+      Serial.println("Error");
+    }
     sendAmountFromQueue();
   }
 }
