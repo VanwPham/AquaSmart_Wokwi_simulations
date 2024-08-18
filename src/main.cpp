@@ -6,6 +6,7 @@
 #include <cstring>
 #include <ThingSpeak.h>
 #include <ESP32Servo.h>
+#include <queue>  // Sử dụng queue
 
 using namespace std;
 
@@ -24,15 +25,16 @@ const char* mqttServer = "test.mosquitto.org";
 const int mqttPort = 1883;
 const char* mqttID = "vankt23";
 const char* publishSensorTopic = "aqua/sensor's";
-const char* feedTopic  = "aqua/Servo";
-
-// để setting gửi feeding
-const char* publishFeedTopic  = "aqua/Servo/done";
+const char* feedTopic = "aqua/Servo";
 
 // Thingspeak config
 const unsigned long myChannelID = 2624543;
 const char* myWriteAPIKey = "HSEZ9JK5G263RF5U";
 const char* myReadAPIKey = "YA3LFQ0FBOO1RHIW";
+
+// Thông tin Thingspeak cho `amount`
+const unsigned long amountChannelID = 2627892;
+const char* amountWriteAPIKey = "1CEPY8UDF09GUFSH";
 
 const int oneWireBus = 4;
 
@@ -55,6 +57,9 @@ PubSubClient client(espClient);
 Servo fishFeederServo;
 int feedTimes = 0;
 
+// Queue lưu trữ các giá trị amount cần gửi
+queue<int> amountQueue;
+
 float pH;
 float tmp;
 
@@ -65,7 +70,7 @@ void publish();
 void feedFish();
 void publishLimits();
 void getRange(char* msg, char* topic);
-void callback(char* topic, byte* payload, unsigned int length) ;
+void callback(char* topic, byte* payload, unsigned int length);
 
 void connectToWiFi(){
   Serial.println();
@@ -142,6 +147,21 @@ void publish() {
   client.publish(publishSensorTopic, combinedString, 0);
 }
 
+void sendAmountFromQueue() {
+  if (!amountQueue.empty()) {
+    int amount = amountQueue.front();  // Lấy giá trị đầu tiên từ queue
+
+    ThingSpeak.setField(1, amount);
+    int result = ThingSpeak.writeFields(amountChannelID, amountWriteAPIKey);
+
+    if (result == 200) {
+      Serial.println("Amount sent successfully from queue");
+      amountQueue.pop();  // Xóa giá trị đã gửi thành công khỏi queue
+    } else {
+      Serial.println("Error sending amount from queue, retrying...");
+    }
+  }
+}
 
 void feedFish() {
   static int last_call =  0;
@@ -151,7 +171,7 @@ void feedFish() {
   last_call = current;
   if (!opening)
   {
-    fishFeederServo.write(90);
+    fishFeederServo.write(0);
     opening = true;
   } // Rotate clockwise
   else 
@@ -193,8 +213,9 @@ void loop()
   }
   client.loop();
 
-  if (feedTimes > 0)
+  if (feedTimes > 0) {  
     feedFish();
+  }
 
   static int last_sent = 0;
   int current = millis();
@@ -204,19 +225,13 @@ void loop()
     displayInfo();
     publish();
   }
+  
+  // Gửi amount từ queue lên ThingSpeak sau mỗi 15s
   static int thingSpeak_last_sent = 0;
   if (current - thingSpeak_last_sent >= thing_speak)
   {
     thingSpeak_last_sent = current;
-    ThingSpeak.setField(1,tmp);
-    ThingSpeak.setField(2,pH);
-    int msg = ThingSpeak.writeFields(myChannelID, myWriteAPIKey);
-    if (msg == 200){
-      Serial.println("Successful");
-    }
-    else {
-      Serial.println("Error");
-    }
+    sendAmountFromQueue();
   }
 }
 
@@ -232,9 +247,12 @@ void callback(char* topic, byte* payload, unsigned int length)
   Serial.println(msg);
   
   if (strcmp(topic, "aqua/Servo") == 0) {
-        feedTimes += int(msg[0] - '0');
-        Serial.println(topic);
+    int amount = int(msg[0] - '0');
+    feedTimes += amount;
+    Serial.println(topic);
+        amountQueue.push(amount);
   }
+  
   else getRange(msg, topic);
   delete [] msg;
 }
