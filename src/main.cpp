@@ -16,7 +16,8 @@ using namespace std;
 #define servo_pin 16
 
 #define pubish_cycle 2000 //ms
-#define thing_speak 15000 //ms 
+// cập nhật dữ liệu lên thingspeak sau 7 phút rưỡi
+#define thing_speak 450000 //ms 
 
 const char* ssid = "Wokwi-GUEST";
 const char* password = "";
