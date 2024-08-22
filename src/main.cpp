@@ -175,14 +175,14 @@ void feedFish() {
     // fishFeederServo.writeMicroseconds(1000); 
     fishFeederServo.write(0);
     opening = true;
-  } // Rotate clockwise
+  } 
   else 
   {
     // fishFeederServo.writeMicroseconds(1500);
     fishFeederServo.write(90);
     opening = false;
     feedTimes--;
-  } // Stop rotating
+  }
 }
 
 void setup(){
@@ -229,7 +229,7 @@ void loop()
     publish();
   }
   
-  // Gửi amount từ queue lên ThingSpeak sau mỗi 15s
+  // Gửi amount từ queue lên ThingSpeak sau mỗi 7'30s
   static int thingSpeak_last_sent = 0;
   if (current - thingSpeak_last_sent >= thing_speak)
   {
